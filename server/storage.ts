@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
-import { eq, desc, and, or, like, isNull, inArray } from "drizzle-orm";
+import { eq, desc, and, or, like, isNull, inArray, count, sum } from "drizzle-orm";
 import { 
   users, 
   departments, 
@@ -87,13 +87,63 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDashboardMetrics(): Promise<any> {
-    // Mock implementation for now
-    return {
-      totalStaff: 0,
-      activePayroll: 0,
-      pendingApprovals: 0,
-      monthlyBudget: 0
-    };
+    try {
+      const currentMonth = new Date().getMonth() + 1; // getMonth() is 0-indexed
+      const currentYear = new Date().getFullYear();
+
+      // Total Staff count
+      const totalStaffResult = await db.select({ count: count() }).from(staff);
+      const totalStaff = totalStaffResult[0].count;
+
+      // Active Payrolls (processed in current month/year)
+      const activePayrollResult = await db.select({ count: count() })
+        .from(payrollRuns)
+        .where(and(
+          eq(payrollRuns.status, 'processed'),
+          eq(payrollRuns.period_month, currentMonth),
+          eq(payrollRuns.period_year, currentYear)
+        ));
+      const activePayroll = activePayrollResult[0].count;
+
+      // Pending Approvals
+      const pendingApprovalsResult = await db.select({ count: count() })
+        .from(payrollRuns)
+        .where(eq(payrollRuns.status, 'pending_approval'));
+      const pendingApprovals = pendingApprovalsResult[0].count;
+
+      // Total Departments
+      const totalDepartmentsResult = await db.select({ count: count() }).from(departments);
+      const totalDepartments = totalDepartmentsResult[0].count;
+
+      // Monthly Budget (sum of total_net for processed payrolls in current month/year)
+      const monthlyBudgetResult = await db.select({ total: sum(payrollRuns.total_net) })
+        .from(payrollRuns)
+        .where(and(
+          eq(payrollRuns.status, 'processed'),
+          eq(payrollRuns.period_month, currentMonth),
+          eq(payrollRuns.period_year, currentYear)
+        ));
+      const monthlyBudget = parseFloat(monthlyBudgetResult[0].total || '0');
+
+      return {
+        totalStaff,
+        monthlyPayroll: monthlyBudget,
+        payrollGrowth: 0, // Placeholder - would need historical comparison
+        staffGrowth: 0, // Placeholder - would need historical comparison
+        pendingApprovals,
+        departments: totalDepartments
+      };
+    } catch (error) {
+      console.error('Error fetching dashboard metrics:', error);
+      return {
+        totalStaff: 0,
+        monthlyPayroll: 0,
+        payrollGrowth: 0,
+        staffGrowth: 0,
+        pendingApprovals: 0,
+        departments: 0
+      };
+    }
   }
 
   async getStaffOverview(): Promise<any> {

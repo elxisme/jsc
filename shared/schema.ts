@@ -6,7 +6,7 @@ import { z } from "zod";
 // Enums
 export const roleEnum = pgEnum('role', ['Super Admin', 'Account Admin', 'Payroll Admin', 'Staff']);
 export const statusEnum = pgEnum('status', ['active', 'on-leave', 'retired', 'terminated']);
-export const payrollStatusEnum = pgEnum('payroll_status', ['draft', 'pending_review', 'approved', 'finalized', 'paid']);
+export const payrollStatusEnum = pgEnum('payroll_status', ['draft', 'pending_approval', 'approved', 'processed', 'cancelled']);
 export const gradeEnum = pgEnum('grade_level', ['GL01', 'GL02', 'GL03', 'GL04', 'GL05', 'GL06', 'GL07', 'GL08', 'GL09', 'GL10', 'GL11', 'GL12', 'GL13', 'GL14', 'GL15', 'GL16', 'GL17']);
 
 // Users table
@@ -114,8 +114,8 @@ export const payrollRuns = pgTable("payroll_runs", {
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });
 
-// Payroll entries table
-export const payrollEntries = pgTable("payroll_entries", {
+// Payroll items table
+export const payrollItems = pgTable("payroll_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   payrollRunId: varchar("payroll_run_id").notNull(),
   staffId: varchar("staff_id").notNull(),
@@ -196,7 +196,7 @@ export const insertPayrollRunSchema = createInsertSchema(payrollRuns).omit({
   updatedAt: true,
 });
 
-export const insertPayrollEntrySchema = createInsertSchema(payrollEntries).omit({
+export const insertPayrollItemSchema = createInsertSchema(payrollItems).omit({
   id: true,
   createdAt: true,
 });
@@ -226,8 +226,8 @@ export type SalaryStructure = typeof salaryStructure.$inferSelect;
 export type PayrollRun = typeof payrollRuns.$inferSelect;
 export type InsertPayrollRun = z.infer<typeof insertPayrollRunSchema>;
 
-export type PayrollEntry = typeof payrollEntries.$inferSelect;
-export type InsertPayrollEntry = z.infer<typeof insertPayrollEntrySchema>;
+export type PayrollItem = typeof payrollItems.$inferSelect;
+export type InsertPayrollItem = z.infer<typeof insertPayrollItemSchema>;
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
